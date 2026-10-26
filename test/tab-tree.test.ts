@@ -144,15 +144,87 @@ describe("convertDocument tab filter", () => {
       selectedTabIds: new Set(["chapter", "body"]),
     });
 
-    expect(tabs.map((tab) => tab.filename)).toEqual([
+    expect(tabs.map((tab) => tab.path)).toEqual([
       "01-Chapter.typ",
-      "02-Body.typ",
+      "01-Chapter/01-Body.typ",
     ]);
-    expect(tabs[0]?.typst).toBe("Parent\n");
-    expect(tabs[1]?.typst).toBe("World\n");
-    expect(typst).toBe(
-      '#include "tabs/01-Chapter.typ"\n\n#include "tabs/02-Body.typ"\n',
+    expect(tabs[0]?.typst).toBe(
+      'Parent\n\n#include "01-Chapter/01-Body.typ"\n',
     );
+    expect(tabs[1]?.typst).toBe("World\n");
+    expect(typst).toBe('#include "tabs/01-Chapter.typ"\n');
     expect(typst).not.toContain("Intro");
+  });
+
+  it("nests grandchildren in a directory named after the child tab", async () => {
+    const nested: docs_v1.Schema$Document = {
+      tabs: [
+        {
+          tabProperties: { tabId: "chapter", title: "Chapter" },
+          documentTab: {
+            body: {
+              content: [
+                {
+                  paragraph: {
+                    elements: [{ textRun: { content: "Parent\n", textStyle: {} } }],
+                    paragraphStyle: { namedStyleType: "NORMAL_TEXT" },
+                  },
+                },
+              ],
+            },
+          },
+          childTabs: [
+            {
+              tabProperties: { tabId: "body", title: "Body" },
+              documentTab: {
+                body: {
+                  content: [
+                    {
+                      paragraph: {
+                        elements: [{ textRun: { content: "Section\n", textStyle: {} } }],
+                        paragraphStyle: { namedStyleType: "NORMAL_TEXT" },
+                      },
+                    },
+                  ],
+                },
+              },
+              childTabs: [
+                {
+                  tabProperties: { tabId: "detail", title: "Detail" },
+                  documentTab: {
+                    body: {
+                      content: [
+                        {
+                          paragraph: {
+                            elements: [
+                              { textRun: { content: "Note\n", textStyle: {} } },
+                            ],
+                            paragraphStyle: { namedStyleType: "NORMAL_TEXT" },
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const { typst, tabs } = await convertDocument(nested, {
+      assets: createMemoryAssetWriter(),
+    });
+
+    expect(typst).toBe('#include "tabs/01-Chapter.typ"\n');
+    expect(tabs.map((tab) => tab.path)).toEqual([
+      "01-Chapter.typ",
+      "01-Chapter/01-Body.typ",
+      "01-Chapter/01-Body/01-Detail.typ",
+    ]);
+    expect(tabs[0]?.typst).toContain('#include "01-Chapter/01-Body.typ"');
+    expect(tabs[1]?.typst).toContain('#include "01-Body/01-Detail.typ"');
+    expect(tabs[2]?.typst).toBe("Note\n");
   });
 });

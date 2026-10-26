@@ -98,7 +98,7 @@ describe("convertDocument", () => {
     expect(typst).toBe(
       '#include "tabs/01-First.typ"\n\n#include "tabs/02-Second.typ"\n',
     );
-    expect(tabs.map((tab) => tab.filename)).toEqual([
+    expect(tabs.map((tab) => tab.path)).toEqual([
       "01-First.typ",
       "02-Second.typ",
     ]);

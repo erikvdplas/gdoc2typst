@@ -141,15 +141,12 @@ program
             `${path.basename(outputPath, path.extname(outputPath))}-assets`,
           ),
         );
-        // Image paths are resolved from the file that contains them.
-        const assetReference = splitTabs
-          ? path.join(tabsDir, "module.typ")
-          : outputPath;
-
-        const assets = createAssetWriter(assetReference, assetsDir);
+        const assets = createAssetWriter(assetsDir);
         const { typst, tabs, warnings } = await convertDocument(document, {
           assets,
           tabsDir: tabsIncludeDir,
+          tabsOutputDir: splitTabs ? tabsDir : undefined,
+          outputFile: outputPath,
           selectedTabIds,
           downloadImage: async (contentUri) => {
             const image = await downloadImage(authClient, contentUri);
@@ -161,7 +158,9 @@ program
         if (tabs.length > 0) {
           await fs.mkdir(tabsDir, { recursive: true });
           for (const tab of tabs) {
-            await fs.writeFile(path.join(tabsDir, tab.filename), tab.typst, "utf8");
+            const filePath = path.join(tabsDir, ...tab.path.split("/"));
+            await fs.mkdir(path.dirname(filePath), { recursive: true });
+            await fs.writeFile(filePath, tab.typst, "utf8");
           }
         }
         await fs.writeFile(outputPath, typst, "utf8");

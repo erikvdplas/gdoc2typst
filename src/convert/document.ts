@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { docs_v1 } from "@googleapis/docs";
 import type { AssetWriter } from "./assets.js";
 import { createBaseContext, type ConvertContext, type Warning } from "./context.js";
@@ -12,8 +13,8 @@ import { sanitizeFilename } from "../util/doc-id.js";
 import { documentTabTree, type TabNode } from "./tab-tree.js";
 
 export interface ConvertedTab {
-  /** File name inside the tabs directory, such as `01-introduction.typ`. */
-  filename: string;
+  /** Path relative to the tabs directory, such as `01-chapter/02-body.typ`. */
+  path: string;
   typst: string;
 }
 
@@ -29,10 +30,17 @@ export interface ConvertDocumentOptions {
   downloadImage?: ConvertContext["downloadImage"];
   registry?: ConverterRegistry;
   /**
-   * Directory, relative to the main `.typ` file, that holds one module per tab.
-   * Used only when more than one tab is included. Default `tabs`.
+   * Directory, relative to the main `.typ` file, that holds the top-level tab
+   * modules. Default `tabs`. Child tabs are nested under their parent.
    */
   tabsDir?: string;
+  /**
+   * Absolute directory the tab modules are written to. Image paths inside a
+   * nested tab are relative to that file. Defaults to `tabsDir`.
+   */
+  tabsOutputDir?: string;
+  /** Absolute path of the main `.typ` file, used when a single tab is inlined. */
+  outputFile?: string;
   /** When set, only these tab ids are converted. Omit to include every tab. */
   selectedTabIds?: ReadonlySet<string>;
 }
@@ -57,55 +65,69 @@ function sliceFromTab(tab: docs_v1.Schema$Tab): TabSlice {
   };
 }
 
-function collectFromTree(
+interface PlannedTab {
+  slice: TabSlice;
+  /** Path relative to the tabs directory, forward slashes. */
+  path: string;
+  children: PlannedTab[];
+}
+
+interface LevelEntry {
+  node: TabNode;
+  children: readonly TabNode[];
+}
+
+function nodesAtLevel(
   nodes: readonly TabNode[],
   selected: ReadonlySet<string> | undefined,
-): TabSlice[] {
-  const slices: TabSlice[] = [];
-  const visit = (node: TabNode) => {
-    if (!selected || selected.has(node.id)) {
-      slices.push(sliceFromTab(node.tab));
-    }
-    for (const child of node.children) {
-      visit(child);
-    }
-  };
+): LevelEntry[] {
+  const entries: LevelEntry[] = [];
   for (const node of nodes) {
-    visit(node);
+    const included = !selected || selected.has(node.id);
+    if (included) {
+      entries.push({ node, children: node.children });
+    } else {
+      entries.push(...nodesAtLevel(node.children, selected));
+    }
   }
-  return slices;
+  return entries;
+}
+
+function planTabs(
+  nodes: readonly TabNode[],
+  selected: ReadonlySet<string> | undefined,
+  directory = "",
+): PlannedTab[] {
+  return nodesAtLevel(nodes, selected).map((entry, index) => {
+    const filename = tabFilename(index, entry.node.tab.tabProperties?.title);
+    const stem = filename.slice(0, -".typ".length);
+    const filePath = directory ? `${directory}/${filename}` : filename;
+    const childDirectory = directory ? `${directory}/${stem}` : stem;
+    return {
+      slice: sliceFromTab(entry.node.tab),
+      path: filePath,
+      children: planTabs(entry.children, selected, childDirectory),
+    };
+  });
+}
+
+function countPlanned(tabs: readonly PlannedTab[]): number {
+  return tabs.reduce((sum, tab) => sum + 1 + countPlanned(tab.children), 0);
 }
 
 export function includedTabCount(
   document: docs_v1.Schema$Document,
   selectedTabIds?: ReadonlySet<string>,
 ): number {
-  return collectTabs(document, selectedTabIds).length;
+  const tree = documentTabTree(document);
+  if (tree.length === 0) {
+    return 1;
+  }
+  return countPlanned(planTabs(tree, selectedTabIds));
 }
 
 export function usesTabModules(document: docs_v1.Schema$Document): boolean {
   return includedTabCount(document) > 1;
-}
-
-function collectTabs(
-  document: docs_v1.Schema$Document,
-  selectedTabIds?: ReadonlySet<string>,
-): TabSlice[] {
-  const tree = documentTabTree(document);
-  if (tree.length > 0) {
-    return collectFromTree(tree, selectedTabIds);
-  }
-  // Legacy documents expose a single body and no tab tree.
-  return [
-    {
-      title: document.title,
-      body: document.body,
-      lists: document.lists,
-      inlineObjects: document.inlineObjects,
-      positionedObjects: document.positionedObjects,
-      footnotes: document.footnotes,
-    },
-  ];
 }
 
 function createContextForTab(
@@ -178,9 +200,26 @@ function tabFilename(index: number, title: string | null | undefined): string {
   return `${prefix}-${stem}.typ`;
 }
 
-function includePath(tabsDir: string, filename: string): string {
+function includePath(tabsDir: string, filePath: string): string {
   const dir = tabsDir.replace(/\\/g, "/").replace(/\/+$/, "");
-  return dir.length > 0 ? `${dir}/${filename}` : filename;
+  return dir.length > 0 ? `${dir}/${filePath}` : filePath;
+}
+
+function includeFromParent(parentPath: string, childPath: string): string {
+  const parentDir = path.posix.dirname(parentPath);
+  const relative = path.posix.relative(parentDir, childPath);
+  return relative;
+}
+
+function joinTypst(body: string, includes: string[]): string {
+  const parts: string[] = [];
+  if (body.trim().length > 0) {
+    parts.push(body.trim());
+  }
+  if (includes.length > 0) {
+    parts.push(includes.join("\n\n"));
+  }
+  return parts.length > 0 ? `${parts.join("\n\n")}\n` : "";
 }
 
 export async function convertDocument(
@@ -188,36 +227,80 @@ export async function convertDocument(
   options: ConvertDocumentOptions,
 ): Promise<ConvertResult> {
   const registry = options.registry ?? createDefaultRegistry();
-  const tabs = collectTabs(document, options.selectedTabIds);
-  const splitTabs = tabs.length > 1;
-  const tabsDir = options.tabsDir ?? "tabs";
-  const modules: ConvertedTab[] = [];
+  const tree = documentTabTree(document);
   const allWarnings: Warning[] = [];
 
-  for (const [index, tab] of tabs.entries()) {
-    const ctx = createContextForTab(tab, options, registry);
-    let body = ctx.renderBlocks(tab.body?.content ?? []);
-    body = await resolveImagePlaceholders(body, ctx);
-    allWarnings.push(...ctx.warnings);
-    const typst = body.trim();
-    const withNewline = typst.length > 0 ? `${typst}\n` : "";
-
-    if (splitTabs) {
-      modules.push({
-        filename: tabFilename(index, tab.title),
-        typst: withNewline,
-      });
-    } else {
-      return { typst: withNewline, tabs: [], warnings: allWarnings };
-    }
+  if (tree.length === 0) {
+    const body = await renderSlice(
+      {
+        title: document.title,
+        body: document.body,
+        lists: document.lists,
+        inlineObjects: document.inlineObjects,
+        positionedObjects: document.positionedObjects,
+        footnotes: document.footnotes,
+      },
+      options.outputFile ?? "document.typ",
+      options,
+      registry,
+      allWarnings,
+    );
+    return { typst: joinTypst(body, []), tabs: [], warnings: allWarnings };
   }
 
-  const includes = modules
-    .map(
-      (tab) =>
-        `#include "${escapeTypstString(includePath(tabsDir, tab.filename))}"`,
-    )
-    .join("\n\n");
-  const typst = includes.length > 0 ? `${includes}\n` : "";
+  const planned = planTabs(tree, options.selectedTabIds);
+  if (countPlanned(planned) <= 1 && planned[0] && planned[0].children.length === 0) {
+    const body = await renderSlice(
+      planned[0].slice,
+      options.outputFile ?? "document.typ",
+      options,
+      registry,
+      allWarnings,
+    );
+    return { typst: joinTypst(body, []), tabs: [], warnings: allWarnings };
+  }
+
+  const tabsDir = options.tabsDir ?? "tabs";
+  const tabsOutputDir = options.tabsOutputDir ?? tabsDir;
+  const modules: ConvertedTab[] = [];
+
+  const renderPlanned = async (tab: PlannedTab): Promise<void> => {
+    const moduleFile = path.join(tabsOutputDir, ...tab.path.split("/"));
+    const body = await renderSlice(tab.slice, moduleFile, options, registry, allWarnings);
+    const includes = tab.children.map(
+      (child) =>
+        `#include "${escapeTypstString(includeFromParent(tab.path, child.path))}"`,
+    );
+    modules.push({ path: tab.path, typst: joinTypst(body, includes) });
+    for (const child of tab.children) {
+      await renderPlanned(child);
+    }
+  };
+
+  for (const tab of planned) {
+    await renderPlanned(tab);
+  }
+
+  const typst = joinTypst(
+    "",
+    planned.map(
+      (tab) => `#include "${escapeTypstString(includePath(tabsDir, tab.path))}"`,
+    ),
+  );
   return { typst, tabs: modules, warnings: allWarnings };
+}
+
+async function renderSlice(
+  tab: TabSlice,
+  moduleFile: string,
+  options: ConvertDocumentOptions,
+  registry: ConverterRegistry,
+  warnings: Warning[],
+): Promise<string> {
+  const ctx = createContextForTab(tab, options, registry);
+  ctx.moduleFile = moduleFile;
+  let body = ctx.renderBlocks(tab.body?.content ?? []);
+  body = await resolveImagePlaceholders(body, ctx);
+  warnings.push(...ctx.warnings);
+  return body;
 }

@@ -65,7 +65,12 @@ async function renderImage(
 
   try {
     const { bytes, extension } = await ctx.downloadImage(contentUri);
-    const relPath = await ctx.assets.writeImage(objectId, extension, bytes);
+    const relPath = await ctx.assets.writeImage(
+      objectId,
+      extension,
+      bytes,
+      ctx.moduleFile,
+    );
     const captionParts = [embedded.title, embedded.description]
       .filter((part): part is string => Boolean(part && part.trim()))
       .map((part) => escapeTypst(part.trim()));

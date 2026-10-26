@@ -12,6 +12,8 @@ export interface ConvertContext {
   positionedObjects: Record<string, docs_v1.Schema$PositionedObject>;
   footnotes: Record<string, docs_v1.Schema$Footnote>;
   assets: AssetWriter;
+  /** File that image paths in this context are relative to. */
+  moduleFile: string;
   warnings: Warning[];
   /** Optional image downloader; when absent, figure converter emits a warning. */
   downloadImage?: (
@@ -25,9 +27,11 @@ export interface ConvertContext {
 export function createBaseContext(
   partial: Omit<
     ConvertContext,
-    "warnings" | "warn" | "renderBlocks" | "renderInlines"
+    "warnings" | "warn" | "renderBlocks" | "renderInlines" | "moduleFile"
   > &
-    Partial<Pick<ConvertContext, "renderBlocks" | "renderInlines">>,
+    Partial<
+      Pick<ConvertContext, "renderBlocks" | "renderInlines" | "moduleFile">
+    >,
 ): ConvertContext {
   const warnings: Warning[] = [];
   const ctx: ConvertContext = {
@@ -36,6 +40,7 @@ export function createBaseContext(
     positionedObjects: partial.positionedObjects,
     footnotes: partial.footnotes,
     assets: partial.assets,
+    moduleFile: partial.moduleFile ?? "document.typ",
     downloadImage: partial.downloadImage,
     warnings,
     renderBlocks:
