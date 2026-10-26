@@ -51,12 +51,12 @@ gdoc2typst auth logout --forget-client
 
 ```bash
 gdoc2typst convert "https://docs.google.com/document/d/DOCUMENT_ID/edit"
-gdoc2typst convert DOCUMENT_ID -o chapter.typ --assets chapter-assets
+gdoc2typst convert DOCUMENT_ID -o chapter.typ --assets chapter-assets --tabs chapters
 ```
 
 If no refresh token is stored, `convert` starts the same browser login as `auth login` and then continues.
 
-Default output is `./<sanitized-title>.typ`. Images are saved under a sibling `<basename>-assets/` directory (or `--assets`). Image paths in the Typst are relative to the `.typ` file so `#include` resolution works.
+Default output is `./<sanitized-title>.typ`. Images are saved under a sibling `<basename>-assets/` directory (or `--assets`). A document with more than one tab writes each tab to its own module and `#include`s them from the main file. Those modules go in `tabs/` next to the output file, or in the directory given by `--tabs`. Image paths are relative to the file that contains them, so they still resolve inside an `#include`.
 
 `auth login` and `convert` resolve the OAuth client in this order: `--client-id` and `--client-secret`, then `--credentials`, then `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`, then `GOOGLE_OAUTH_CREDENTIALS` (a path to the downloaded JSON), then a client already stored in the keychain. A service-account key is rejected; the file must be an OAuth client download.
 

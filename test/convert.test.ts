@@ -50,7 +50,7 @@ describe("convertDocument", () => {
     expect(warnings).toEqual([]);
   });
 
-  it("emits a tab heading when multiple tabs are present", async () => {
+  it("includes each tab as its own module", async () => {
     const multiTab: docs_v1.Schema$Document = {
       title: "Tabs",
       tabs: [
@@ -91,14 +91,65 @@ describe("convertDocument", () => {
       ],
     };
 
-    const { typst } = await convertDocument(multiTab, {
+    const { typst, tabs } = await convertDocument(multiTab, {
       assets: createMemoryAssetWriter(),
     });
 
-    expect(typst).toContain("= First");
-    expect(typst).toContain("= Second");
-    expect(typst).toContain("A");
-    expect(typst).toContain("B");
+    expect(typst).toBe(
+      '#include "tabs/01-First.typ"\n\n#include "tabs/02-Second.typ"\n',
+    );
+    expect(tabs.map((tab) => tab.filename)).toEqual([
+      "01-First.typ",
+      "02-Second.typ",
+    ]);
+    expect(tabs[0]?.typst).toBe("A\n");
+    expect(tabs[1]?.typst).toBe("B\n");
+    expect(typst).not.toContain("= First");
+  });
+
+  it("honors a custom tabs directory in include paths", async () => {
+    const multiTab: docs_v1.Schema$Document = {
+      tabs: [
+        {
+          tabProperties: { title: "One" },
+          documentTab: {
+            body: {
+              content: [
+                {
+                  paragraph: {
+                    elements: [{ textRun: { content: "A\n", textStyle: {} } }],
+                    paragraphStyle: { namedStyleType: "NORMAL_TEXT" },
+                  },
+                },
+              ],
+            },
+          },
+        },
+        {
+          tabProperties: { title: "Two" },
+          documentTab: {
+            body: {
+              content: [
+                {
+                  paragraph: {
+                    elements: [{ textRun: { content: "B\n", textStyle: {} } }],
+                    paragraphStyle: { namedStyleType: "NORMAL_TEXT" },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      ],
+    };
+
+    const { typst } = await convertDocument(multiTab, {
+      assets: createMemoryAssetWriter(),
+      tabsDir: "chapters",
+    });
+
+    expect(typst).toContain('#include "chapters/01-One.typ"');
+    expect(typst).toContain('#include "chapters/02-Two.typ"');
   });
 });
 
