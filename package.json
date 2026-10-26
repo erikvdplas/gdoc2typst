@@ -1,0 +1,41 @@
+{
+  "name": "gdoc2typst",
+  "version": "0.1.0",
+  "description": "Convert Google Docs to include-friendly Typst source files",
+  "type": "module",
+  "bin": {
+    "gdoc2typst": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "typst",
+    "google-docs",
+    "cli",
+    "converter"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@googleapis/docs": "^14.1.1",
+    "commander": "^14.0.0",
+    "cross-keychain": "^1.1.0",
+    "google-auth-library": "^11.3.1",
+    "open": "^11.0.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

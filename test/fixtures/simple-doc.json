@@ -1,0 +1,449 @@
+{
+  "title": "Simple Doc",
+  "body": {
+    "content": [
+      {
+        "sectionBreak": {
+          "sectionStyle": {}
+        }
+      },
+      {
+        "paragraph": {
+          "elements": [
+            {
+              "textRun": {
+                "content": "Main Title\n",
+                "textStyle": {}
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "TITLE",
+            "headingId": "titleHeading"
+          }
+        }
+      },
+      {
+        "paragraph": {
+          "elements": [
+            {
+              "textRun": {
+                "content": "A short subtitle\n",
+                "textStyle": {}
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "SUBTITLE"
+          }
+        }
+      },
+      {
+        "paragraph": {
+          "elements": [
+            {
+              "textRun": {
+                "content": "Section One\n",
+                "textStyle": {}
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "HEADING_1",
+            "headingId": "headingOne"
+          }
+        }
+      },
+      {
+        "paragraph": {
+          "elements": [
+            {
+              "textRun": {
+                "content": "Hello ",
+                "textStyle": {}
+              }
+            },
+            {
+              "textRun": {
+                "content": "bold",
+                "textStyle": { "bold": true }
+              }
+            },
+            {
+              "textRun": {
+                "content": " and ",
+                "textStyle": {}
+              }
+            },
+            {
+              "textRun": {
+                "content": "italic",
+                "textStyle": { "italic": true }
+              }
+            },
+            {
+              "textRun": {
+                "content": " with ",
+                "textStyle": {}
+              }
+            },
+            {
+              "textRun": {
+                "content": "both",
+                "textStyle": { "bold": true, "italic": true }
+              }
+            },
+            {
+              "textRun": {
+                "content": ".\n",
+                "textStyle": {}
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT"
+          }
+        }
+      },
+      {
+        "paragraph": {
+          "elements": [
+            {
+              "textRun": {
+                "content": "Visit ",
+                "textStyle": {}
+              }
+            },
+            {
+              "textRun": {
+                "content": "Typst",
+                "textStyle": {
+                  "link": { "url": "https://typst.app" }
+                }
+              }
+            },
+            {
+              "textRun": {
+                "content": ".\n",
+                "textStyle": {}
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT"
+          }
+        }
+      },
+      {
+        "paragraph": {
+          "elements": [
+            {
+              "textRun": {
+                "content": "First item\n",
+                "textStyle": {}
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT"
+          },
+          "bullet": {
+            "listId": "list1",
+            "nestingLevel": 0
+          }
+        }
+      },
+      {
+        "paragraph": {
+          "elements": [
+            {
+              "textRun": {
+                "content": "Nested item\n",
+                "textStyle": {}
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT"
+          },
+          "bullet": {
+            "listId": "list1",
+            "nestingLevel": 1
+          }
+        }
+      },
+      {
+        "paragraph": {
+          "elements": [
+            {
+              "textRun": {
+                "content": "Second item\n",
+                "textStyle": {}
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT"
+          },
+          "bullet": {
+            "listId": "list1",
+            "nestingLevel": 0
+          }
+        }
+      },
+      {
+        "paragraph": {
+          "elements": [
+            {
+              "textRun": {
+                "content": "One\n",
+                "textStyle": {}
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT"
+          },
+          "bullet": {
+            "listId": "list2",
+            "nestingLevel": 0
+          }
+        }
+      },
+      {
+        "paragraph": {
+          "elements": [
+            {
+              "textRun": {
+                "content": "Two\n",
+                "textStyle": {}
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT"
+          },
+          "bullet": {
+            "listId": "list2",
+            "nestingLevel": 0
+          }
+        }
+      },
+      {
+        "table": {
+          "rows": 2,
+          "columns": 2,
+          "tableRows": [
+            {
+              "tableCells": [
+                {
+                  "content": [
+                    {
+                      "paragraph": {
+                        "elements": [
+                          {
+                            "textRun": {
+                              "content": "A\n",
+                              "textStyle": {}
+                            }
+                          }
+                        ],
+                        "paragraphStyle": {
+                          "namedStyleType": "NORMAL_TEXT"
+                        }
+                      }
+                    }
+                  ],
+                  "tableCellStyle": {
+                    "rowSpan": 1,
+                    "columnSpan": 1
+                  }
+                },
+                {
+                  "content": [
+                    {
+                      "paragraph": {
+                        "elements": [
+                          {
+                            "textRun": {
+                              "content": "B\n",
+                              "textStyle": {}
+                            }
+                          }
+                        ],
+                        "paragraphStyle": {
+                          "namedStyleType": "NORMAL_TEXT"
+                        }
+                      }
+                    }
+                  ],
+                  "tableCellStyle": {
+                    "rowSpan": 1,
+                    "columnSpan": 1
+                  }
+                }
+              ]
+            },
+            {
+              "tableCells": [
+                {
+                  "content": [
+                    {
+                      "paragraph": {
+                        "elements": [
+                          {
+                            "textRun": {
+                              "content": "Merged\n",
+                              "textStyle": {}
+                            }
+                          }
+                        ],
+                        "paragraphStyle": {
+                          "namedStyleType": "NORMAL_TEXT"
+                        }
+                      }
+                    }
+                  ],
+                  "tableCellStyle": {
+                    "rowSpan": 1,
+                    "columnSpan": 2
+                  }
+                },
+                {
+                  "content": [],
+                  "tableCellStyle": {
+                    "rowSpan": 0,
+                    "columnSpan": 0
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "paragraph": {
+          "elements": [
+            {
+              "textRun": {
+                "content": "See note",
+                "textStyle": {}
+              }
+            },
+            {
+              "footnoteReference": {
+                "footnoteId": "fn1",
+                "footnoteNumber": "1"
+              }
+            },
+            {
+              "textRun": {
+                "content": ".\n",
+                "textStyle": {}
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT"
+          }
+        }
+      },
+      {
+        "tableOfContents": {
+          "content": []
+        }
+      },
+      {
+        "paragraph": {
+          "elements": [
+            {
+              "horizontalRule": {}
+            },
+            {
+              "textRun": {
+                "content": "\n",
+                "textStyle": {}
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT"
+          }
+        }
+      },
+      {
+        "paragraph": {
+          "elements": [
+            {
+              "inlineObjectElement": {
+                "inlineObjectId": "img1"
+              }
+            },
+            {
+              "textRun": {
+                "content": "\n",
+                "textStyle": {}
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT"
+          }
+        }
+      }
+    ]
+  },
+  "lists": {
+    "list1": {
+      "listProperties": {
+        "nestingLevels": [
+          { "glyphSymbol": "●" },
+          { "glyphSymbol": "○" }
+        ]
+      }
+    },
+    "list2": {
+      "listProperties": {
+        "nestingLevels": [
+          { "glyphType": "DECIMAL", "glyphFormat": "%0." }
+        ]
+      }
+    }
+  },
+  "footnotes": {
+    "fn1": {
+      "footnoteId": "fn1",
+      "content": [
+        {
+          "paragraph": {
+            "elements": [
+              {
+                "textRun": {
+                  "content": "A footnote body\n",
+                  "textStyle": {}
+                }
+              }
+            ],
+            "paragraphStyle": {
+              "namedStyleType": "NORMAL_TEXT"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "inlineObjects": {
+    "img1": {
+      "objectId": "img1",
+      "inlineObjectProperties": {
+        "embeddedObject": {
+          "title": "Diagram",
+          "description": "An example figure",
+          "imageProperties": {
+            "contentUri": "https://example.com/image.png"
+          }
+        }
+      }
+    }
+  }
+}
