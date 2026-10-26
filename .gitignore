@@ -1,4 +1,6 @@
 node_modules/
+client_secret*.json
+credentials.json
 dist/
 *.log
 .DS_Store

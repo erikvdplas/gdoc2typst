@@ -14,9 +14,9 @@ Convert a Google Doc into an include-friendly Typst source file. The tool copies
 2. Enable **Google Docs API**.
 3. Configure the OAuth consent screen (External or Internal). While the app is in Testing, only listed test users can sign in.
 4. Create credentials → **OAuth client ID** → application type **Desktop app**.
-5. Copy the client id and client secret.
+5. Download the client JSON (`client_secret_….json`). It contains `installed.client_id` and `installed.client_secret`.
 
-Never commit the client secret. Pass it via flags or environment variables.
+Never commit that file or the client secret. Pass the file path, or the id and secret, via flags or environment variables.
 
 ## Install
 
@@ -29,11 +29,13 @@ npm link   # optional: expose `gdoc2typst` on your PATH
 ## Authenticate
 
 ```bash
-export GOOGLE_CLIENT_ID="your-client-id.apps.googleusercontent.com"
-export GOOGLE_CLIENT_SECRET="your-client-secret"
+gdoc2typst auth login --credentials ~/Downloads/client_secret.json
 
+# or point at the same file with an environment variable:
+export GOOGLE_OAUTH_CREDENTIALS="$HOME/Downloads/client_secret.json"
 gdoc2typst auth login
-# or:
+
+# or pass the id and secret directly:
 gdoc2typst auth login --client-id "$GOOGLE_CLIENT_ID" --client-secret "$GOOGLE_CLIENT_SECRET"
 ```
 
@@ -56,7 +58,7 @@ If no refresh token is stored, `convert` starts the same browser login as `auth 
 
 Default output is `./<sanitized-title>.typ`. Images are saved under a sibling `<basename>-assets/` directory (or `--assets`). Image paths in the Typst are relative to the `.typ` file so `#include` resolution works.
 
-Client credentials for `convert` resolve in this order: `--client-id` / `--client-secret`, then `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`, then a client already stored in the keychain.
+`auth login` and `convert` resolve the OAuth client in this order: `--client-id` and `--client-secret`, then `--credentials`, then `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`, then `GOOGLE_OAUTH_CREDENTIALS` (a path to the downloaded JSON), then a client already stored in the keychain. A service-account key is rejected; the file must be an OAuth client download.
 
 ## What is converted
 

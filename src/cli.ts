@@ -18,10 +18,12 @@ import { parseDocumentId, sanitizeFilename } from "./util/doc-id.js";
 function clientOpts(opts: {
   clientId?: string;
   clientSecret?: string;
+  credentials?: string;
 }): ClientOptions {
   return {
     clientId: opts.clientId,
     clientSecret: opts.clientSecret,
+    credentialsFile: opts.credentials,
   };
 }
 
@@ -37,9 +39,10 @@ const auth = program.command("auth").description("Manage Google OAuth credential
 auth
   .command("login")
   .description("Sign in with Google and store credentials in the OS keychain")
+  .option("--credentials <file>", "OAuth client JSON downloaded from Google Cloud")
   .option("--client-id <id>", "OAuth client id")
   .option("--client-secret <secret>", "OAuth client secret")
-  .action(async (opts: { clientId?: string; clientSecret?: string }) => {
+  .action(async (opts: { clientId?: string; clientSecret?: string; credentials?: string }) => {
     try {
       await login(clientOpts(opts));
       console.error("Signed in. Credentials stored in the OS keychain.");
@@ -77,6 +80,7 @@ program
   .argument("<doc>", "Google Docs URL or document id")
   .option("-o, --output <file>", "Output .typ path")
   .option("--assets <dir>", "Directory for downloaded images")
+  .option("--credentials <file>", "OAuth client JSON downloaded from Google Cloud")
   .option("--client-id <id>", "OAuth client id")
   .option("--client-secret <secret>", "OAuth client secret")
   .action(
@@ -87,6 +91,7 @@ program
         assets?: string;
         clientId?: string;
         clientSecret?: string;
+        credentials?: string;
       },
     ) => {
       try {
@@ -99,10 +104,10 @@ program
         const outputPath = path.resolve(opts.output ?? defaultName);
         const assetsDir = path.resolve(
           opts.assets ??
-            path.join(
-              path.dirname(outputPath),
-              `${path.basename(outputPath, path.extname(outputPath))}-assets`,
-            ),
+          path.join(
+            path.dirname(outputPath),
+            `${path.basename(outputPath, path.extname(outputPath))}-assets`,
+          ),
         );
 
         const assets = createAssetWriter(outputPath, assetsDir);
