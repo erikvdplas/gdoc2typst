@@ -90,6 +90,10 @@ program
   .option("--credentials <file>", "OAuth client JSON downloaded from Google Cloud")
   .option("--client-id <id>", "OAuth client id")
   .option("--client-secret <secret>", "OAuth client secret")
+  .option(
+    "--no-slug-labels",
+    "Use Google Docs heading ids as Typst labels instead of kebab-case slugs",
+  )
   .action(
     async (
       doc: string,
@@ -101,6 +105,7 @@ program
         clientId?: string;
         clientSecret?: string;
         credentials?: string;
+        slugLabels?: boolean;
       },
     ) => {
       try {
@@ -148,6 +153,7 @@ program
           tabsOutputDir: splitTabs ? tabsDir : undefined,
           outputFile: outputPath,
           selectedTabIds,
+          slugLabels: opts.slugLabels,
           downloadImage: async (contentUri) => {
             const image = await downloadImage(authClient, contentUri);
             return { bytes: image.bytes, extension: image.extension };

@@ -11,6 +11,7 @@ import type { ConverterRegistry } from "./registry.js";
 import { escapeTypstString } from "./escape.js";
 import { sanitizeFilename } from "../util/doc-id.js";
 import { documentTabTree, type TabNode } from "./tab-tree.js";
+import { collectHeadingRefs, createHeadingLabels, type HeadingLabels } from "./labels.js";
 
 export interface ConvertedTab {
   /** Path relative to the tabs directory, such as `01-chapter/02-body.typ`. */
@@ -43,6 +44,11 @@ export interface ConvertDocumentOptions {
   outputFile?: string;
   /** When set, only these tab ids are converted. Omit to include every tab. */
   selectedTabIds?: ReadonlySet<string>;
+  /**
+   * Slug heading text into Typst labels. Set false to keep Google Docs heading ids.
+   * Default true.
+   */
+  slugLabels?: boolean;
 }
 
 interface TabSlice {
@@ -134,6 +140,7 @@ function createContextForTab(
   tab: TabSlice,
   options: ConvertDocumentOptions,
   registry: ConverterRegistry,
+  headingLabels?: HeadingLabels,
 ): ConvertContext {
   const ctx = createBaseContext({
     lists: tab.lists ?? {},
@@ -142,6 +149,7 @@ function createContextForTab(
     footnotes: tab.footnotes ?? {},
     assets: options.assets,
     downloadImage: options.downloadImage,
+    headingLabels,
   });
 
   ctx.renderInlines = (elements) =>
@@ -230,64 +238,107 @@ export async function convertDocument(
   const tree = documentTabTree(document);
   const allWarnings: Warning[] = [];
 
+  const renderWithLabels = async (slices: TabSlice[], render: (labels?: HeadingLabels) => Promise<ConvertResult>) => {
+    const labels =
+      options.slugLabels === false
+        ? undefined
+        : createHeadingLabels(
+          slices.flatMap((slice) =>
+            collectHeadingRefs(slice.body?.content ?? [], slice.footnotes ?? {}),
+          ),
+        );
+    return render(labels);
+  };
+
   if (tree.length === 0) {
-    const body = await renderSlice(
-      {
-        title: document.title,
-        body: document.body,
-        lists: document.lists,
-        inlineObjects: document.inlineObjects,
-        positionedObjects: document.positionedObjects,
-        footnotes: document.footnotes,
-      },
-      options.outputFile ?? "document.typ",
-      options,
-      registry,
-      allWarnings,
-    );
-    return { typst: joinTypst(body, []), tabs: [], warnings: allWarnings };
+    const slice: TabSlice = {
+      title: document.title,
+      body: document.body,
+      lists: document.lists,
+      inlineObjects: document.inlineObjects,
+      positionedObjects: document.positionedObjects,
+      footnotes: document.footnotes,
+    };
+    return renderWithLabels([slice], async (labels) => {
+      const body = await renderSlice(
+        slice,
+        options.outputFile ?? "document.typ",
+        options,
+        registry,
+        allWarnings,
+        labels,
+      );
+      return { typst: joinTypst(body, []), tabs: [], warnings: allWarnings };
+    });
   }
 
   const planned = planTabs(tree, options.selectedTabIds);
+  const slices = slicesInOrder(planned);
   if (countPlanned(planned) <= 1 && planned[0] && planned[0].children.length === 0) {
-    const body = await renderSlice(
-      planned[0].slice,
-      options.outputFile ?? "document.typ",
-      options,
-      registry,
-      allWarnings,
-    );
-    return { typst: joinTypst(body, []), tabs: [], warnings: allWarnings };
+    return renderWithLabels(slices, async (labels) => {
+      const body = await renderSlice(
+        planned[0]!.slice,
+        options.outputFile ?? "document.typ",
+        options,
+        registry,
+        allWarnings,
+        labels,
+      );
+      return { typst: joinTypst(body, []), tabs: [], warnings: allWarnings };
+    });
   }
 
-  const tabsDir = options.tabsDir ?? "tabs";
-  const tabsOutputDir = options.tabsOutputDir ?? tabsDir;
-  const modules: ConvertedTab[] = [];
+  return renderWithLabels(slices, async (labels) => {
+    const tabsDir = options.tabsDir ?? "tabs";
+    const tabsOutputDir = options.tabsOutputDir ?? tabsDir;
+    const modules: ConvertedTab[] = [];
 
-  const renderPlanned = async (tab: PlannedTab): Promise<void> => {
-    const moduleFile = path.join(tabsOutputDir, ...tab.path.split("/"));
-    const body = await renderSlice(tab.slice, moduleFile, options, registry, allWarnings);
-    const includes = tab.children.map(
-      (child) =>
-        `#include "${escapeTypstString(includeFromParent(tab.path, child.path))}"`,
+    const renderPlanned = async (tab: PlannedTab): Promise<void> => {
+      const moduleFile = path.join(tabsOutputDir, ...tab.path.split("/"));
+      const body = await renderSlice(
+        tab.slice,
+        moduleFile,
+        options,
+        registry,
+        allWarnings,
+        labels,
+      );
+      const includes = tab.children.map(
+        (child) =>
+          `#include "${escapeTypstString(includeFromParent(tab.path, child.path))}"`,
+      );
+      modules.push({ path: tab.path, typst: joinTypst(body, includes) });
+      for (const child of tab.children) {
+        await renderPlanned(child);
+      }
+    };
+
+    for (const tab of planned) {
+      await renderPlanned(tab);
+    }
+
+    const typst = joinTypst(
+      "",
+      planned.map(
+        (tab) => `#include "${escapeTypstString(includePath(tabsDir, tab.path))}"`,
+      ),
     );
-    modules.push({ path: tab.path, typst: joinTypst(body, includes) });
+    return { typst, tabs: modules, warnings: allWarnings };
+  });
+}
+
+function slicesInOrder(tabs: readonly PlannedTab[]): TabSlice[] {
+  const slices: TabSlice[] = [];
+  const visit = (tab: PlannedTab) => {
+    slices.push(tab.slice);
     for (const child of tab.children) {
-      await renderPlanned(child);
+      visit(child);
     }
   };
-
-  for (const tab of planned) {
-    await renderPlanned(tab);
+  for (const tab of tabs) {
+    visit(tab);
   }
-
-  const typst = joinTypst(
-    "",
-    planned.map(
-      (tab) => `#include "${escapeTypstString(includePath(tabsDir, tab.path))}"`,
-    ),
-  );
-  return { typst, tabs: modules, warnings: allWarnings };
+  return slices;
 }
 
 async function renderSlice(
@@ -296,8 +347,9 @@ async function renderSlice(
   options: ConvertDocumentOptions,
   registry: ConverterRegistry,
   warnings: Warning[],
+  headingLabels?: HeadingLabels,
 ): Promise<string> {
-  const ctx = createContextForTab(tab, options, registry);
+  const ctx = createContextForTab(tab, options, registry, headingLabels);
   ctx.moduleFile = moduleFile;
   let body = ctx.renderBlocks(tab.body?.content ?? []);
   body = await resolveImagePlaceholders(body, ctx);

@@ -39,7 +39,11 @@ export function convertParagraph(
   const marker = HEADING_MARKERS[named];
   if (marker) {
     const headingId = style?.headingId;
-    const typstLabel = headingId ? toTypstLabel(headingId) : null;
+    const typstLabel = ctx.headingLabels
+      ? ctx.headingLabels.takeNext()
+      : headingId
+        ? toTypstLabel(headingId)
+        : null;
     const label = typstLabel ? ` <${typstLabel}>` : "";
     const text = inlines.trim() || "";
     return joinBlocks(`${marker} ${text}${label}`, positioned);

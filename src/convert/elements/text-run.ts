@@ -67,7 +67,12 @@ export function styleText(
       const headingId = link.headingId ?? link.heading?.id;
       const bookmarkId = link.bookmarkId ?? link.bookmark?.id;
       const target = headingId ?? bookmarkId;
-      const label = target ? toTypstLabel(target) : null;
+      let label: string | null = null;
+      if (headingId && ctx.headingLabels) {
+        label = ctx.headingLabels.byId.get(headingId) ?? null;
+      } else if (target) {
+        label = toTypstLabel(target);
+      }
       if (label) {
         body = `#link(<${label}>)[${body}]`;
       } else {

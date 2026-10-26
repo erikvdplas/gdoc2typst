@@ -1,5 +1,6 @@
 import type { docs_v1 } from "@googleapis/docs";
 import type { AssetWriter } from "./assets.js";
+import type { HeadingLabels } from "./labels.js";
 
 export interface Warning {
   kind: string;
@@ -14,6 +15,10 @@ export interface ConvertContext {
   assets: AssetWriter;
   /** File that image paths in this context are relative to. */
   moduleFile: string;
+  /**
+   * Slug labels shared by every tab. Absent when heading ids are used instead.
+   */
+  headingLabels?: HeadingLabels;
   warnings: Warning[];
   /** Optional image downloader; when absent, figure converter emits a warning. */
   downloadImage?: (
@@ -27,10 +32,18 @@ export interface ConvertContext {
 export function createBaseContext(
   partial: Omit<
     ConvertContext,
-    "warnings" | "warn" | "renderBlocks" | "renderInlines" | "moduleFile"
+    | "warnings"
+    | "warn"
+    | "renderBlocks"
+    | "renderInlines"
+    | "moduleFile"
+    | "headingLabels"
   > &
     Partial<
-      Pick<ConvertContext, "renderBlocks" | "renderInlines" | "moduleFile">
+      Pick<
+        ConvertContext,
+        "renderBlocks" | "renderInlines" | "moduleFile" | "headingLabels"
+      >
     >,
 ): ConvertContext {
   const warnings: Warning[] = [];
@@ -41,6 +54,7 @@ export function createBaseContext(
     footnotes: partial.footnotes,
     assets: partial.assets,
     moduleFile: partial.moduleFile ?? "document.typ",
+    headingLabels: partial.headingLabels,
     downloadImage: partial.downloadImage,
     warnings,
     renderBlocks:

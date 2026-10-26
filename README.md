@@ -58,6 +58,8 @@ If no refresh token is stored, `convert` starts the same browser login as `auth 
 
 Default output is `./<sanitized-title>.typ`. Images are saved under a sibling `<basename>-assets/` directory (or `--assets`). A document with more than one included tab writes each top-level tab into `tabs/` (or `--tabs`) and `#include`s those files from the main file. A tab's children are `#include`d at the end of that tab, from a directory named after the parent file. The same nesting continues for deeper tabs. Pass `--interactive-tabs` to walk the tab tree in the terminal: right arrow expands a collapsed branch, left collapses it or moves to the parent, and space toggles a tab. A parent shows `[-]` when only some of its children are selected. Only checked tabs are written. Image paths are relative to the file that contains them, so they still resolve inside an `#include`.
 
+Heading labels are kebab-case slugs of the heading text, so "A beautiful Title" becomes `<a-beautiful-title>`. A repeated slug is numbered in order (`<a-beautiful-title-1>`, `<a-beautiful-title-2>`). Links to those headings use the same label. Pass `--no-slug-labels` to keep the Google Docs heading id instead.
+
 `auth login` and `convert` resolve the OAuth client in this order: `--client-id` and `--client-secret`, then `--credentials`, then `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`, then `GOOGLE_OAUTH_CREDENTIALS` (a path to the downloaded JSON), then a client already stored in the keychain. A service-account key is rejected; the file must be an OAuth client download.
 
 ## What is converted

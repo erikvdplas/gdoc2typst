@@ -25,9 +25,9 @@ describe("convertDocument", () => {
       }),
     });
 
-    expect(typst).toContain("= Main Title <titleHeading>");
+    expect(typst).toContain("= Main Title <main-title>");
     expect(typst).toContain("#emph[A short subtitle]");
-    expect(typst).toContain("= Section One <headingOne>");
+    expect(typst).toContain("= Section One <section-one>");
     expect(typst).toContain("*bold*");
     expect(typst).toContain("_italic_");
     expect(typst).toContain("#emph[#strong[both]]");
@@ -193,5 +193,71 @@ describe("ConverterRegistry fallback", () => {
       ctx,
     );
     expect(out).toBe("#outline()");
+  });
+});
+
+describe("heading labels", () => {
+  function heading(text: string, headingId: string, style = "HEADING_1") {
+    return {
+      paragraph: {
+        elements: [{ textRun: { content: `${text}\n`, textStyle: {} } }],
+        paragraphStyle: { namedStyleType: style, headingId },
+      },
+    };
+  }
+
+  it("numbers repeated heading slugs and points links at those labels", async () => {
+    const document: docs_v1.Schema$Document = {
+      body: {
+        content: [
+          heading("A beautiful Title", "h.1"),
+          {
+            paragraph: {
+              elements: [
+                {
+                  textRun: {
+                    content: "see first",
+                    textStyle: { link: { headingId: "h.1" } },
+                  },
+                },
+                { textRun: { content: " and ", textStyle: {} } },
+                {
+                  textRun: {
+                    content: "see second",
+                    textStyle: { link: { headingId: "h.2" } },
+                  },
+                },
+              ],
+              paragraphStyle: { namedStyleType: "NORMAL_TEXT" },
+            },
+          },
+          heading("A beautiful Title", "h.2"),
+        ],
+      },
+    };
+
+    const { typst } = await convertDocument(document, {
+      assets: createMemoryAssetWriter(),
+    });
+
+    expect(typst).toContain("= A beautiful Title <a-beautiful-title-1>");
+    expect(typst).toContain("= A beautiful Title <a-beautiful-title-2>");
+    expect(typst).toContain("#link(<a-beautiful-title-1>)[see first]");
+    expect(typst).toContain("#link(<a-beautiful-title-2>)[see second]");
+  });
+
+  it("keeps Docs heading ids when slug labels are disabled", async () => {
+    const document: docs_v1.Schema$Document = {
+      body: {
+        content: [heading("A beautiful Title", "h.abc")],
+      },
+    };
+
+    const { typst } = await convertDocument(document, {
+      assets: createMemoryAssetWriter(),
+      slugLabels: false,
+    });
+
+    expect(typst).toContain("= A beautiful Title <h-abc>");
   });
 });
