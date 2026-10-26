@@ -27,6 +27,10 @@
   ],
   "author": "Erik van der Plas",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/erikvdplas/gdoc2typst"
+  },
   "dependencies": {
     "@googleapis/docs": "^14.1.1",
     "@inquirer/core": "^12.0.5",

@@ -21,9 +21,15 @@ Never commit that file or the client secret. Pass the file path, or the id and s
 ## Install
 
 ```bash
+npm install -g gdoc2typst
+```
+
+To build from source, clone the repository and run:
+
+```bash
 npm install
 npm run build
-npm link   # optional: expose `gdoc2typst` on your PATH
+npm link
 ```
 
 ## Authenticate
