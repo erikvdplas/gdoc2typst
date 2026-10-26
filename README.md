@@ -56,7 +56,7 @@ gdoc2typst convert DOCUMENT_ID -o chapter.typ --assets chapter-assets --tabs cha
 
 If no refresh token is stored, `convert` starts the same browser login as `auth login` and then continues.
 
-Default output is `./<sanitized-title>.typ`. Images are saved under a sibling `<basename>-assets/` directory (or `--assets`). A document with more than one tab writes each tab to its own module and `#include`s them from the main file. Those modules go in `tabs/` next to the output file, or in the directory given by `--tabs`. Image paths are relative to the file that contains them, so they still resolve inside an `#include`.
+Default output is `./<sanitized-title>.typ`. Images are saved under a sibling `<basename>-assets/` directory (or `--assets`). A document with more than one included tab writes each tab to its own module and `#include`s them from the main file. Those modules go in `tabs/` next to the output file, or in the directory given by `--tabs`. Pass `--interactive-tabs` to walk the tab tree in the terminal: right arrow expands a collapsed branch, left collapses it or moves to the parent, and space toggles a tab. A parent shows `[-]` when only some of its children are selected. Only checked tabs are written. Image paths are relative to the file that contains them, so they still resolve inside an `#include`.
 
 `auth login` and `convert` resolve the OAuth client in this order: `--client-id` and `--client-secret`, then `--credentials`, then `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`, then `GOOGLE_OAUTH_CREDENTIALS` (a path to the downloaded JSON), then a client already stored in the keychain. A service-account key is rejected; the file must be an OAuth client download.
 

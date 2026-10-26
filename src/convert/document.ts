@@ -9,6 +9,7 @@ import {
 import type { ConverterRegistry } from "./registry.js";
 import { escapeTypstString } from "./escape.js";
 import { sanitizeFilename } from "../util/doc-id.js";
+import { documentTabTree, type TabNode } from "./tab-tree.js";
 
 export interface ConvertedTab {
   /** File name inside the tabs directory, such as `01-introduction.typ`. */
@@ -29,9 +30,11 @@ export interface ConvertDocumentOptions {
   registry?: ConverterRegistry;
   /**
    * Directory, relative to the main `.typ` file, that holds one module per tab.
-   * Used only when the document has more than one tab. Default `tabs`.
+   * Used only when more than one tab is included. Default `tabs`.
    */
   tabsDir?: string;
+  /** When set, only these tab ids are converted. Omit to include every tab. */
+  selectedTabIds?: ReadonlySet<string>;
 }
 
 interface TabSlice {
@@ -43,39 +46,56 @@ interface TabSlice {
   footnotes?: Record<string, docs_v1.Schema$Footnote> | null;
 }
 
-function flattenTabs(tabs: docs_v1.Schema$Tab[] | undefined | null): TabSlice[] {
-  const result: TabSlice[] = [];
-  const visit = (tab: docs_v1.Schema$Tab) => {
-    if (tab.documentTab) {
-      result.push({
-        title: tab.tabProperties?.title,
-        body: tab.documentTab.body,
-        lists: tab.documentTab.lists,
-        inlineObjects: tab.documentTab.inlineObjects,
-        positionedObjects: tab.documentTab.positionedObjects,
-        footnotes: tab.documentTab.footnotes,
-      });
+function sliceFromTab(tab: docs_v1.Schema$Tab): TabSlice {
+  return {
+    title: tab.tabProperties?.title,
+    body: tab.documentTab?.body,
+    lists: tab.documentTab?.lists,
+    inlineObjects: tab.documentTab?.inlineObjects,
+    positionedObjects: tab.documentTab?.positionedObjects,
+    footnotes: tab.documentTab?.footnotes,
+  };
+}
+
+function collectFromTree(
+  nodes: readonly TabNode[],
+  selected: ReadonlySet<string> | undefined,
+): TabSlice[] {
+  const slices: TabSlice[] = [];
+  const visit = (node: TabNode) => {
+    if (!selected || selected.has(node.id)) {
+      slices.push(sliceFromTab(node.tab));
     }
-    for (const child of tab.childTabs ?? []) {
+    for (const child of node.children) {
       visit(child);
     }
   };
-  for (const tab of tabs ?? []) {
-    visit(tab);
+  for (const node of nodes) {
+    visit(node);
   }
-  return result;
+  return slices;
+}
+
+export function includedTabCount(
+  document: docs_v1.Schema$Document,
+  selectedTabIds?: ReadonlySet<string>,
+): number {
+  return collectTabs(document, selectedTabIds).length;
 }
 
 export function usesTabModules(document: docs_v1.Schema$Document): boolean {
-  return flattenTabs(document.tabs).length > 1;
+  return includedTabCount(document) > 1;
 }
 
-function collectTabs(document: docs_v1.Schema$Document): TabSlice[] {
-  const fromTabs = flattenTabs(document.tabs);
-  if (fromTabs.length > 0) {
-    return fromTabs;
+function collectTabs(
+  document: docs_v1.Schema$Document,
+  selectedTabIds?: ReadonlySet<string>,
+): TabSlice[] {
+  const tree = documentTabTree(document);
+  if (tree.length > 0) {
+    return collectFromTree(tree, selectedTabIds);
   }
-  // Legacy top-level body
+  // Legacy documents expose a single body and no tab tree.
   return [
     {
       title: document.title,
@@ -168,7 +188,7 @@ export async function convertDocument(
   options: ConvertDocumentOptions,
 ): Promise<ConvertResult> {
   const registry = options.registry ?? createDefaultRegistry();
-  const tabs = collectTabs(document);
+  const tabs = collectTabs(document, options.selectedTabIds);
   const splitTabs = tabs.length > 1;
   const tabsDir = options.tabsDir ?? "tabs";
   const modules: ConvertedTab[] = [];

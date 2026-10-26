@@ -10,7 +10,9 @@ import {
 } from "./auth/oauth.js";
 import { authStatus } from "./auth/token-store.js";
 import { createAssetWriter } from "./convert/assets.js";
-import { convertDocument, usesTabModules } from "./convert/document.js";
+import { convertDocument, includedTabCount } from "./convert/document.js";
+import { selectTabs } from "./cli/select-tabs.js";
+import { documentTabTree } from "./convert/tab-tree.js";
 import { downloadImage } from "./google/download-image.js";
 import { fetchDocument } from "./google/fetch-document.js";
 import { parseDocumentId, sanitizeFilename } from "./util/doc-id.js";
@@ -81,6 +83,10 @@ program
   .option("-o, --output <file>", "Output .typ path")
   .option("--assets <dir>", "Directory for downloaded images")
   .option("--tabs <dir>", "Directory for per-tab modules (default: tabs)")
+  .option(
+    "--interactive-tabs",
+    "Choose which tabs to include from the document tab tree",
+  )
   .option("--credentials <file>", "OAuth client JSON downloaded from Google Cloud")
   .option("--client-id <id>", "OAuth client id")
   .option("--client-secret <secret>", "OAuth client secret")
@@ -91,6 +97,7 @@ program
         output?: string;
         assets?: string;
         tabs?: string;
+        interactiveTabs?: boolean;
         clientId?: string;
         clientSecret?: string;
         credentials?: string;
@@ -101,11 +108,28 @@ program
         const authClient = await ensureAuthenticated(clientOpts(opts));
         const document = await fetchDocument(authClient, documentId);
 
+        let selectedTabIds: Set<string> | undefined;
+        if (opts.interactiveTabs) {
+          if (!process.stdin.isTTY || !process.stdout.isTTY) {
+            throw new Error(
+              "--interactive-tabs needs an interactive terminal.",
+            );
+          }
+          const tree = documentTabTree(document);
+          if (tree.length === 0) {
+            throw new Error(
+              "This document has no tab tree. Omit --interactive-tabs to convert it.",
+            );
+          }
+          selectedTabIds = new Set(await selectTabs({ tree }));
+        }
+
         const title = document.title || "document";
         const defaultName = `${sanitizeFilename(title)}.typ`;
         const outputPath = path.resolve(opts.output ?? defaultName);
         const outputDir = path.dirname(outputPath);
-        const splitTabs = usesTabModules(document);
+        const splitTabs =
+          includedTabCount(document, selectedTabIds) > 1;
         const tabsDir = path.resolve(opts.tabs ?? path.join(outputDir, "tabs"));
         const tabsIncludeDir = splitTabs
           ? path.relative(outputDir, tabsDir).split(path.sep).join("/")
@@ -126,6 +150,7 @@ program
         const { typst, tabs, warnings } = await convertDocument(document, {
           assets,
           tabsDir: tabsIncludeDir,
+          selectedTabIds,
           downloadImage: async (contentUri) => {
             const image = await downloadImage(authClient, contentUri);
             return { bytes: image.bytes, extension: image.extension };
